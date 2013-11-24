@@ -45,3 +45,8 @@ def normalize_using_data(data):
 
 def normalize_using_data_type(data):
     return data.astype(float) / np.iinfo(data.dtype).max
+
+
+def from_file_normalized(path):
+    sr, data = from_file(path)
+    return sr, normalize_using_data_type(data)
