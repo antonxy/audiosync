@@ -38,11 +38,13 @@ def analyse_directory(directory):
 
         length = audio.size
         sync_point, data = analyse_audio.find_and_decode_signal(audio, sr, 4000, 0.05, 5000, 0.05)
+        valid = analyse_audio.check_checksum(data)
 
         print 'path {} analysed'.format(path)
 
-        ret_list.append({'path': path, 'sync_point_samples': sync_point,
-                         'sst': data, 'sample_rate': sr, 'length_samples': length})
+        if valid:
+            ret_list.append({'path': path, 'sync_point_samples': sync_point,
+                            'sst': data[0:3], 'sample_rate': sr, 'length_samples': length})
     return ret_list
 
 
@@ -58,7 +60,6 @@ def generate_edls(videos, audios, fps, edl_dir):
     for v in videos:
         for a in audios:
             if v['sst'] == a['sst']:
-                print v['sst']
                 generate_edl(v, a, fps, edl_dir)
 
 

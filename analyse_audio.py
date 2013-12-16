@@ -57,7 +57,7 @@ def find_and_decode_signal(data, sample_rate, carrier_frequency, chunk_length, b
     returns: signal start, decoded bytes
     """
     signal_start = find_barker_signal(data, sample_rate, barker_frequency, barker_chunk_length)
-    decoded_data = decode_signal(data, chunk_length, signal_start, sample_rate, 3)
+    decoded_data = decode_signal(data, chunk_length, signal_start, sample_rate, 4)
     return signal_start, decoded_data
 
 
@@ -95,6 +95,16 @@ def generate_barker_signal(frequency, chunk_length, sample_rate):
             data = np.append(data, silence)
 
     return data
+
+
+def check_checksum(data):
+    checksum = 0
+    for i in data[0:3]:
+        checksum += i
+
+    checksum %= 255
+
+    return checksum == data[3]
 
 
 def find_barker_signal(data, sr, barker_frequency, barker_chunk_length):
