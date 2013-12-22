@@ -4,7 +4,7 @@ import scipy.signal
 
 def bits_to_bytes(bits):
     bs = []
-    for b in range(len(bits) / 8):
+    for b in range(len(bits) // 8):
         byte = bits[b*8:(b+1)*8]
         bs.append(int(''.join([str(bit) for bit in byte]), 2))
     return bs

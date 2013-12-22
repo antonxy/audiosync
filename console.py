@@ -2,7 +2,6 @@ import argparse
 import os
 import read_audio
 import analyse_audio
-from pytimecode import PyTimeCode
 
 
 def main():
@@ -16,13 +15,15 @@ def main():
     audio_ret = analyse_directory(args.ad)
     video_ret = analyse_directory(args.vd)
 
-    print 'audio_ret = %s' % audio_ret
-    print 'video_ret = %s' % video_ret
+    print('audio_ret = %s' % audio_ret)
+    print('video_ret = %s' % video_ret)
 
     rename_files(audio_ret, 'a')
     rename_files(video_ret, 'v')
 
-    generate_edls(video_ret, audio_ret, args.fps, args.edl)
+    fps = float(args.fps)
+
+    generate_edls(video_ret, audio_ret, fps, args.edl)
 
 
 def analyse_directory(directory):
@@ -33,14 +34,14 @@ def analyse_directory(directory):
         try:
             sr, audio = read_audio.from_file_normalized(path)
         except Exception:
-            print 'Could not open file %s' % path
+            print('Could not open file %s' % path)
             continue
 
         length = audio.size
         sync_point, data = analyse_audio.find_and_decode_signal(audio, sr, 4000, 0.05, 5000, 0.05)
         valid = analyse_audio.check_checksum(data)
 
-        print 'path {} analysed'.format(path)
+        print('path {} analysed'.format(path))
 
         if valid:
             ret_list.append({'path': path, 'sync_point_samples': sync_point,
@@ -64,9 +65,16 @@ def generate_edls(videos, audios, fps, edl_dir):
 
 
 def generate_tc(seconds, fps):
-    ptc = PyTimeCode(fps)
-    ptc.float_to_tc(seconds)
-    return ptc.make_timecode()
+    rem_seconds = float(seconds)
+    hrs = int(rem_seconds // 3600)
+    rem_seconds -= hrs * 3600
+    mins = int(rem_seconds // 60)
+    rem_seconds -= mins * 60
+    secs = int(rem_seconds // 1)
+    rem_seconds -= secs
+    frames = round(rem_seconds * fps)
+
+    return '{:02d}:{:02d}:{:02d}:{:02d}'.format(hrs, mins, secs, frames)
 
 
 def generate_edl(video_data, audio_data, fps, edl_dir):
@@ -75,7 +83,7 @@ def generate_edl(video_data, audio_data, fps, edl_dir):
     filename = sst_str + '.edl'
 
     f = open(os.path.join(os.path.abspath(edl_dir), filename), 'w')
-    print 'generating {}'.format(filename)
+    print('generating {}'.format(filename))
 
     #                  sample        /       sample_rate
     sync_sec_a = float(audio_data['sync_point_samples'] / float(audio_data['sample_rate']))

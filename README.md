@@ -5,7 +5,7 @@ You can generate these patterns with this [app for android](https://github.com/a
 This tool is only a quick hack for now and I only tested it on Linux.
 
 It depends on:
-- Python 2.7
+- Python
 - numpy
 - scipy
 - ffmpeg
