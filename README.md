@@ -14,3 +14,4 @@ It finds the sync points in the audio of all files (Camera needs some mic too), 
 
 You can run it like this:
 `python console.py dir-with-all-video-files/ dir-with-all-audio-files/ edl-output-dir/ project_frames_per_second`
+or use the GUI: `python gui.py`
