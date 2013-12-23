@@ -4,6 +4,8 @@ Tool to sync audio and video automatically using a sync pattern which also conta
 You can generate these patterns with this [app for android](https://github.com/antonxy/audiosync_androidapp).
 This tool is only a quick hack for now and I only tested it on Linux.
 
+**[demo video](http://www.youtube.com/watch?v=vqRL_LsXrd8)**
+
 It depends on:
 - Python
 - numpy
