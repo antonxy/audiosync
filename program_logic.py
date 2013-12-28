@@ -11,7 +11,7 @@ def analyse_file(path):
         return
 
     length = audio.size
-    sync_point, data = analyse_audio.find_and_decode_signal(audio, sr, 4000, 0.05, 5000, 0.05)
+    sync_point, data = analyse_audio.find_and_decode_signal(audio, sr, 0.05, 3000, 6000, 0.5)
     valid = analyse_audio.check_checksum(data)
 
     print('path {} analysed'.format(path))

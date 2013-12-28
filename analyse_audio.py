@@ -52,11 +52,11 @@ def decode_signal(data, chunk_length, signal_start, sample_rate, num_bytes):
     return bits_to_bytes(decoded_data)
 
 
-def find_and_decode_signal(data, sample_rate, carrier_frequency, chunk_length, barker_frequency, barker_chunk_length):
+def find_and_decode_signal(data, sample_rate, chunk_length, chirp_f0, chirp_f1, chirp_duration):
     """
     returns: signal start, decoded bytes
     """
-    signal_start = find_barker_signal(data, sample_rate, barker_frequency, barker_chunk_length)
+    signal_start = find_sync_signal(data, sample_rate, generate_chirp(chirp_f0, chirp_f1, chirp_duration, sample_rate))
     decoded_data = decode_signal(data, chunk_length, signal_start, sample_rate, 4)
     return signal_start, decoded_data
 
@@ -78,23 +78,10 @@ def generate_signal(bits, chunk_length, sample_rate, frequency):
     return data
 
 
-def generate_barker_signal(frequency, chunk_length, sample_rate):
-    max_arg = int(frequency * chunk_length * 2 * np.pi)
-
-    sync_chunk = np.sin(np.linspace(0, max_arg, chunk_length * sample_rate))
-    silence = np.zeros(chunk_length * sample_rate)
-    #                                                                                             One additional false
-    barker13 = [True, True, True, True, True, False, False, True, True, False, True, False, True, False]
-
-    data = np.zeros(0)
-
-    for bit in barker13:
-        if bit:
-            data = np.append(data, sync_chunk)
-        else:
-            data = np.append(data, silence)
-
-    return data
+def generate_chirp(f0, f1, duration, sample_rate):
+    ts = np.linspace(0, duration, duration * sample_rate)
+    #linear cosine chirp
+    return scipy.signal.chirp(ts, f0, duration, f1, method='linear')
 
 
 def check_checksum(data):
@@ -107,10 +94,9 @@ def check_checksum(data):
     return checksum == data[3]
 
 
-def find_barker_signal(data, sr, barker_frequency, barker_chunk_length):
+def find_sync_signal(data, sr, sync_signal):
     """
-    returns: sample at the end of the barker signal
+    returns: sample at the end of the sync signal
     """
-    barker = generate_barker_signal(barker_frequency, barker_chunk_length, sr)
-    res = scipy.signal.fftconvolve(data, barker[::-1], 'valid')
-    return np.argmax(np.abs(res)) + barker.size
+    res = scipy.signal.fftconvolve(data, sync_signal[::-1], 'valid')
+    return np.argmax(np.abs(res)) + sync_signal.size
