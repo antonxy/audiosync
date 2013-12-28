@@ -21,6 +21,7 @@ class MainFrame(tk.Frame):
         self.audio_progress_var = tk.IntVar()
         self.video_progress_var = tk.IntVar()
         self.fps_var = tk.StringVar()
+        self.start_button = None
 
         self.generate_ui()
         self.center_window()
@@ -42,7 +43,8 @@ class MainFrame(tk.Frame):
 
         cmd_frame = tk.Frame(self)
         cmd_frame.pack(fill=tk.X)
-        tk.Button(cmd_frame, text='Start', command=self.execute).pack()
+        self.start_button = tk.Button(cmd_frame, text='Start', command=self.execute)
+        self.start_button.pack()
 
         Progressbar(self, variable=self.video_progress_var).pack(fill=tk.X)
         Progressbar(self, variable=self.audio_progress_var).pack(fill=tk.X)
@@ -90,12 +92,13 @@ class MainFrame(tk.Frame):
             return
 
         thread = Thread(target=self.thread_target,
-                        args=(self.audio_progress_var, self.video_progress_var, fps, directory))
+                        args=(self.audio_progress_var, self.video_progress_var, self.start_button, fps, directory))
         thread.start()
+        self.start_button.config(state='disabled')
 
 
     @staticmethod
-    def thread_target(audio_progress_var, video_progress_var, fps, directory):
+    def thread_target(audio_progress_var, video_progress_var, start_button, fps, directory):
         video_ret = analyse_directory(os.path.join(directory, 'video'), video_progress_var)
         audio_ret = analyse_directory(os.path.join(directory, 'audio'), audio_progress_var)
 
@@ -104,10 +107,10 @@ class MainFrame(tk.Frame):
 
         program_logic.generate_edls(video_ret, audio_ret, fps, os.path.join(directory, 'edl'))
 
-        messagebox.showinfo(title='audiosync', message='Done!')
-
         audio_progress_var.set(0)
         video_progress_var.set(0)
+
+        start_button.config(state='normal')
 
 
 def analyse_directory(directory, progress_var):
