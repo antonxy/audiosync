@@ -1,4 +1,4 @@
-from scipy.io import wavfile
+import scipy_wavfile as wavfile
 import os
 import subprocess
 from tempfile import NamedTemporaryFile

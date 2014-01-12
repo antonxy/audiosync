@@ -9,7 +9,6 @@ This tool is only a quick hack for now and I only tested it on Linux.
 It depends on:
 - Python
 - numpy
-- scipy
 - ffmpeg
 
 It finds the sync points in the audio of all files (Camera needs some mic too), renames the files to scene-shot-take and generates EDL files for Lightworks (might work with other editors too)

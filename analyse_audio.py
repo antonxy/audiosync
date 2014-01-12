@@ -1,5 +1,5 @@
 import numpy as np
-import scipy.signal
+import scipy_signal
 
 
 def bits_to_bytes(bits):
@@ -81,7 +81,7 @@ def generate_signal(bits, chunk_length, sample_rate, frequency):
 def generate_chirp(f0, f1, duration, sample_rate):
     ts = np.linspace(0, duration, duration * sample_rate)
     #linear cosine chirp
-    return scipy.signal.chirp(ts, f0, duration, f1, method='linear')
+    return scipy_signal.chirp(ts, f0, duration, f1, method='linear')
 
 
 def check_checksum(data):
@@ -98,5 +98,5 @@ def find_sync_signal(data, sr, sync_signal):
     """
     returns: sample at the end of the sync signal
     """
-    res = scipy.signal.fftconvolve(data, sync_signal[::-1], 'valid')
+    res = scipy_signal.fftconvolve(data, sync_signal[::-1], 'valid')
     return np.argmax(np.abs(res)) + sync_signal.size
