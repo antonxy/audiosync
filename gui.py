@@ -21,6 +21,7 @@ class MainFrame(tk.Frame):
         self.audio_progress_var = tk.IntVar()
         self.video_progress_var = tk.IntVar()
         self.fps_var = tk.StringVar()
+        self.audio_shift_var = tk.StringVar()
         self.start_button = None
 
         self.generate_ui()
@@ -41,6 +42,12 @@ class MainFrame(tk.Frame):
         tk.Label(fps_frame, text='FPS:').pack(side=tk.LEFT)
         tk.Entry(fps_frame, textvariable=self.fps_var).pack(side=tk.LEFT)
 
+        audio_shift_frame = tk.Frame(self)
+        audio_shift_frame.pack()
+        tk.Label(audio_shift_frame, text='Shift Audio forward').pack(side=tk.LEFT)
+        tk.Entry(audio_shift_frame, textvariable=self.audio_shift_var).pack(side=tk.LEFT)
+        tk.Label(audio_shift_frame, text='frames').pack(side=tk.LEFT)
+
         cmd_frame = tk.Frame(self)
         cmd_frame.pack(fill=tk.X)
         self.start_button = tk.Button(cmd_frame, text='Start', command=self.execute)
@@ -53,7 +60,7 @@ class MainFrame(tk.Frame):
 
     def center_window(self):
         w = 500
-        h = 120
+        h = 140
 
         sw = self.parent.winfo_screenwidth()
         sh = self.parent.winfo_screenheight()
@@ -91,21 +98,27 @@ class MainFrame(tk.Frame):
             messagebox.showerror(title='audiosync', message='FPS has to be decimal number')
             return
 
+        try:
+            audio_shift = int(self.audio_shift_var.get())
+        except ValueError:
+            messagebox.showerror(title='audiosync', message='Audio shift has to be integer')
+            return
+
         thread = Thread(target=self.thread_target,
-                        args=(self.audio_progress_var, self.video_progress_var, self.start_button, fps, directory))
+                        args=(self.audio_progress_var, self.video_progress_var, self.start_button, fps, directory, audio_shift))
         thread.start()
         self.start_button.config(state='disabled')
 
 
     @staticmethod
-    def thread_target(audio_progress_var, video_progress_var, start_button, fps, directory):
+    def thread_target(audio_progress_var, video_progress_var, start_button, fps, directory, audio_shift):
         video_ret = analyse_directory(os.path.join(directory, 'video'), video_progress_var)
         audio_ret = analyse_directory(os.path.join(directory, 'audio'), audio_progress_var)
 
         program_logic.rename_files(audio_ret, 'a')
         program_logic.rename_files(video_ret, 'v')
 
-        program_logic.generate_edls(video_ret, audio_ret, fps, os.path.join(directory, 'edl'))
+        program_logic.generate_edls(video_ret, audio_ret, fps, os.path.join(directory, 'edl'), audio_shift)
 
         audio_progress_var.set(0)
         video_progress_var.set(0)

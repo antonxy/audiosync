@@ -9,6 +9,7 @@ def main():
     parser.add_argument('ad', help='Audio directory')
     parser.add_argument('edl', help='EDL output directory')
     parser.add_argument('fps', help='Project frames per second')
+    parser.add_argument('--audio_shift', help='Shift audio X frames forward')
     args = parser.parse_args()
 
     audio_ret = analyse_directory(args.ad)
@@ -21,8 +22,9 @@ def main():
     program_logic.rename_files(video_ret, 'v')
 
     fps = float(args.fps)
+    audio_shift = int(args.audio_shift)
 
-    program_logic.generate_edls(video_ret, audio_ret, fps, args.edl)
+    program_logic.generate_edls(video_ret, audio_ret, fps, args.edl, audio_shift)
 
 
 def analyse_directory(directory):

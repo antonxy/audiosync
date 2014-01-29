@@ -29,11 +29,11 @@ def rename_files(file_list, suffix):
                                           '%i-%i-%i_%s%s' % (sst[0], sst[1], sst[2], suffix, file_ext)))
 
 
-def generate_edls(videos, audios, fps, edl_dir):
+def generate_edls(videos, audios, fps, edl_dir, audio_shift=0):
     for v in videos:
         for a in audios:
             if v['sst'] == a['sst']:
-                generate_edl(v, a, fps, edl_dir)
+                generate_edl(v, a, fps, edl_dir, audio_shift)
 
 
 def generate_tc(seconds, fps):
@@ -49,7 +49,7 @@ def generate_tc(seconds, fps):
     return '{:02d}:{:02d}:{:02d}:{:02d}'.format(hrs, mins, secs, frames)
 
 
-def generate_edl(video_data, audio_data, fps, edl_dir):
+def generate_edl(video_data, audio_data, fps, edl_dir, audio_shift=0):
     sst = video_data['sst']
     sst_str = '-'.join(['%s' % e for e in sst])
     filename = sst_str + '.edl'
@@ -64,7 +64,7 @@ def generate_edl(video_data, audio_data, fps, edl_dir):
     len_sec_a = float(audio_data['length_samples'] / float(audio_data['sample_rate']))
     len_sec_v = float(video_data['length_samples'] / float(video_data['sample_rate']))
 
-    a_bef_v = sync_sec_a - sync_sec_v
+    a_bef_v = sync_sec_a - sync_sec_v - (audio_shift / fps)
     v_bef_a = -a_bef_v
 
     f.write('TITLE: %s   FORMAT: CMX3600\n' % sst_str)
