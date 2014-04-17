@@ -21,48 +21,71 @@ def find_signal(data, freq, sr):
     th = np.amax(mul)/2
     return np.argmax(np.greater(mul, th))
 
+if False:
+    def decode_signal(data, chunk_length, frequency, signal_start, sample_rate, num_bits):
+        """
+        decodes the n byte BPSK-signal in the audio data
+        """
+        max_arg = int(frequency * chunk_length * 2 * np.pi)
+        one_chunk = np.sin(np.linspace(0, max_arg, chunk_length * sample_rate))
 
-def decode_signal(data, chunk_length, signal_start, sample_rate, num_bytes):
-    """
-    decodes the n byte BPSK-signal in the audio data
-    """
-    chunk_samples = int(sample_rate * chunk_length)
-    decoded_data = []
-    last_chunk = None
-    last_bit = 0
-    #                                                                Read n bytes + start bit
-    for delta_n in range(signal_start, signal_start + chunk_samples * (num_bytes * 8 + 1), chunk_samples):
-        if delta_n + chunk_samples > data.size:
-            break
+        chunk_samples = int(sample_rate * chunk_length)
+        decoded_data = []
 
-        current_chunk = data[delta_n:delta_n + chunk_samples]
-        if last_chunk is not None:
-            prod = np.multiply(current_chunk, last_chunk)
+        for delta_n in range(signal_start, signal_start + chunk_samples * (num_bits + 1), chunk_samples):
+            if delta_n + chunk_samples > data.size:
+                break
+
+            current_chunk = data[delta_n:delta_n + chunk_samples]
+            prod = np.multiply(current_chunk, one_chunk)
             s = np.sum(prod)
+            decoded_data.append(1 if s > 0 else 0)
 
-            #Switch bit if s < 0; s < 0 means phase change
-            if s < 0:
-                if last_bit < 1:
-                    last_bit = 1
-                else:
-                    last_bit = 0
-            decoded_data.append(last_bit)
+        return decoded_data[1:]
+else:
 
-        last_chunk = current_chunk
-    return bits_to_bytes(decoded_data)
+    def decode_signal(data, chunk_length, frequency, signal_start, sample_rate, num_bits):
+        """
+        decodes the n byte BPSK-signal in the audio data
+        """
+        chunk_samples = int(sample_rate * chunk_length)
+        decoded_data = []
+        last_chunk = None
+        last_bit = 0
+        #                                                                Read n bytes + start bit
+        for delta_n in range(signal_start, signal_start + chunk_samples * (num_bits + 1), chunk_samples):
+            if delta_n + chunk_samples > data.size:
+                break
+
+            current_chunk = data[delta_n:delta_n + chunk_samples]
+            if last_chunk is not None:
+                prod = np.multiply(current_chunk, last_chunk)
+                s = np.sum(prod)
+
+                #Switch bit if s < 0; s < 0 means phase change
+                if s < 0:
+                    if last_bit < 1:
+                        last_bit = 1
+                    else:
+                        last_bit = 0
+                decoded_data.append(last_bit)
+
+            last_chunk = current_chunk
+        return decoded_data
 
 
-def find_and_decode_signal(data, sample_rate, chunk_length, chirp_f0, chirp_f1, chirp_duration):
+def find_and_decode_signal(data, sample_rate, chunk_length, frequency, chirp_f0, chirp_f1, chirp_duration):
     """
     returns: signal start, decoded bytes
     """
     signal_start = find_sync_signal(data, sample_rate, generate_chirp(chirp_f0, chirp_f1, chirp_duration, sample_rate))
-    decoded_data = decode_signal(data, chunk_length, signal_start, sample_rate, 4)
+    decoded_data = bits_to_bytes(decode_signal(data, chunk_length, frequency, signal_start, sample_rate, 32))
     return signal_start, decoded_data
 
 
 def generate_signal(bits, chunk_length, sample_rate, frequency):
-    max_arg = int(frequency * chunk_length / sample_rate * 2 * np.pi)
+    #max_arg = int(frequency * chunk_length / sample_rate * 2 * np.pi)
+    max_arg = int(frequency * chunk_length * 2 * np.pi)
 
     zero_chunk = np.sin(np.linspace(0 + np.pi, max_arg + np.pi, chunk_length * sample_rate))
     one_chunk = np.sin(np.linspace(0, max_arg, chunk_length * sample_rate))
