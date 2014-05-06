@@ -78,6 +78,7 @@ def find_and_decode_signal(data, sample_rate, chunk_length, frequency, chirp_f0,
     """
     returns: signal start, decoded bytes
     """
+    data = bandpass(data, frequency, 500, sample_rate)
     signal_start = find_sync_signal(data, sample_rate, generate_chirp(chirp_f0, chirp_f1, chirp_duration, sample_rate))
     decoded_data = bits_to_bytes(decode_signal(data, chunk_length, frequency, signal_start, sample_rate, 32))
     return signal_start, decoded_data
@@ -123,3 +124,9 @@ def find_sync_signal(data, sr, sync_signal):
     """
     res = scipy_signal.fftconvolve(data, sync_signal[::-1], 'valid')
     return np.argmax(np.abs(res)) + sync_signal.size
+
+
+def bandpass(data, f, pass_width, sr):
+    filter_array = scipy_signal.firwin(128, [f-pass_width, f+pass_width], pass_zero=False, nyq=sr/2)
+    data2 = scipy_signal.fftconvolve(data, filter_array, mode='same')
+    return data2
