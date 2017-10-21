@@ -1,3 +1,5 @@
+# Contains code form https://github.com/kit-cel/lecture-examples/blob/master/nt1/vorlesung marked with EXTERNAL licensed under GPL
+
 import numpy as np
 import scipy_signal
 
@@ -101,6 +103,234 @@ def generate_signal(bits, chunk_length, sample_rate, frequency):
 
     return data
 
+# EXTERNAL
+########################
+# find impulse response of an RC filter
+########################
+def get_rc_ir(K, n_up, t_symbol, r):
+    
+    ''' 
+    Determines coefficients of an RC filter 
+    
+    Formula out of: K.-D. Kammeyer, Nachrichtenübertragung
+    At poles, l'Hospital was used 
+    
+    NOTE: Length of the IR has to be an odd number
+    
+    IN: length of IR, upsampling factor, symbol time, roll-off factor
+    OUT: filter coefficients
+    '''
+
+    # check that IR length is odd
+    assert K % 2 == 1, 'Length of the impulse response should be an odd number'
+    
+    # map zero beta to close-to-zero
+    if r == 0:
+        r = 1e-32
+
+
+    # initialize output length and sample time
+    rc = np.zeros( K )
+    t_sample = t_symbol / n_up
+    
+    
+    # time indices and sampled time
+    k_steps = np.arange( -(K-1) / 2.0, (K-1) / 2.0 + 1 )   
+    t_steps = k_steps * t_sample
+    
+    for k in k_steps.astype(int):
+        
+        if t_steps[k] == 0:
+            rc[ k ] = 1.
+            
+        elif np.abs( t_steps[k] ) == t_symbol / ( 2.0 * r ):
+            rc[k] = np.sin(np.pi/(2*r)) / (np.pi/(2*r)) * np.pi / 4
+        #    rc[ k ] = r * np.sin( np.pi / r )
+        #    
+        else:
+            rc[ k ] = np.sin( np.pi * t_steps[k]/t_symbol ) / (np.pi * t_steps[k]/t_symbol) \
+                * np.cos( r * np.pi * t_steps[k] / t_symbol ) \
+                / ( 1.0 - ( 2.0 * r * t_steps[k] / t_symbol )**2 )
+        #    rc[ k ] = np.sin( np.pi * t_steps[k]/t_symbol ) / np.pi / t_steps[k] \
+        #        * np.cos( r * np.pi * t_steps[k] / t_symbol ) \
+        #        / ( 1.0 - ( 2.0 * r * t_steps[k] / t_symbol )**2 )
+ 
+    return rc
+
+
+########################
+# find impulse response of an RRC filter
+########################
+def get_rrc_ir(K, n_up, t_symb, r):
+        
+    ''' 
+    Determines coefficients of an RRC filter 
+    
+    Formula out of: J. Huber, Trelliscodierung, Springer, 1992, S. 15
+    At poles, values of wikipedia.de were used (without cross-checking)
+    
+    NOTE: Length of the IR has to be an odd number
+    
+    IN: length of IR, upsampling factor, symbol time, roll-off factor
+    OUT: filter ceofficients
+    '''
+
+    assert K % 2 != 0, "Filter length needs to be odd"
+    
+    if r == 0:
+        r = 1e-32
+
+    # init
+    rrc = np.zeros(K)
+    t_sample = t_symb/n_up
+    
+        
+    i_steps = np.arange( 0, K)
+    k_steps = np.arange( -(K-1)/2.0, (K-1)/2.0 + 1 )    
+    t_steps = k_steps*t_sample
+
+    for i in i_steps:
+
+        if t_steps[i] == 0:
+            rrc[i] = 1.0/np.sqrt(t_symb) * (1.0 - r + 4.0 * r / np.pi )
+
+        elif np.abs( t_steps[i] ) == t_symb/4.0/r:
+            rrc[i] = r/np.sqrt(2.0*t_symb)*((1+2/np.pi)*np.sin(np.pi/4.0/r)+ \
+                            ( 1.0 - 2.0/np.pi ) * np.cos(np.pi/4.0/r) )
+
+        else:
+            rrc[i] = 1.0/np.sqrt(t_symb)*( np.sin( np.pi*t_steps[i]/t_symb*(1-r) ) + \
+                            4.0*r*t_steps[i]/t_symb * np.cos( np.pi*t_steps[i]/t_symb*(1+r) ) ) \
+                            / (np.pi*t_steps[i]/t_symb*(1.0-(4.0*r*t_steps[i]/t_symb)**2.0))
+ 
+    return rrc
+# END EXTERNAL
+
+import matplotlib
+matplotlib.use('TkAgg') 
+import matplotlib.pyplot as plt
+
+# EXTERNAL
+def generate_constellation_points(M):
+    return [ np.exp( 1j * 2 * np.pi * m / M + 1j * np.pi / M ) for m in range( M ) ]
+# END EXTERNAL
+
+def generate_rc_filter(n_up, symbol_time):
+    syms_per_filt = 4
+    K_filt = 2 * syms_per_filt * n_up + 1
+    rc = get_rc_ir(K_filt, n_up, symbol_time, 0.33)
+    return rc / np.linalg.norm(rc)
+
+def generate_rrc_filter(n_up, symbol_time):
+    syms_per_filt = 4
+    K_filt = 2 * syms_per_filt * n_up + 1
+    rrc = get_rrc_ir(K_filt, n_up, symbol_time, 0.33)
+    #return rrc / np.linalg.norm(rrc)
+    return rrc / rrc[int(rrc.shape[0] / 2)]
+
+def generate_signal_new(symbols, n_up, sr, frequency):
+    M = 4
+    constellation_points = generate_constellation_points(M)
+
+    plt.plot(np.real(constellation_points), np.imag(constellation_points), 'o')
+    for i, xy in enumerate(zip(np.real(constellation_points), np.imag(constellation_points))):
+        plt.annotate(str(i), xy=xy, textcoords='data')
+    plt.show()
+
+    s = [ constellation_points[symbol] for symbol in symbols ]
+    n_symbols = len(s)
+    symbol_time = n_up / sr
+
+    rect = np.ones(n_up)
+
+    rrc = generate_rrc_filter(n_up, symbol_time) * 0.7
+
+    plt.plot(rrc)
+    print(rrc.shape)
+
+# EXTERNAL
+    s_up = np.zeros(n_symbols * n_up, dtype=np.complex128)
+    s_up[::n_up] = s
+    s_up = np.convolve(rrc, s_up)
+
+    plt.plot(np.abs(s_up))
+    plt.show()
+
+    plt.plot( np.real( s_up ), np.imag( s_up ), linewidth=2.0 )
+    plt.grid( True )
+    plt.xlabel( '$\mathrm{Re}\\{s(t)\\}$' )
+    plt.ylabel(' $\mathrm{Im}\\{s(t)\\}$' )
+    plt.title( 'QPSK signal' )
+    plt.show()
+# END EXTERNAL
+
+    t = np.linspace(0, s_up.shape[0]/sr, s_up.shape[0])
+    carrier = np.exp(-1j*2*np.pi*frequency*t)
+    
+    modulated = np.real(s_up * carrier)
+    print(modulated.shape)
+
+    #plt.plot(modulated)
+    #plt.show()
+
+    return modulated
+
+def demodulate_signal(signal, n_data_symbols, n_up, sr, frequency):
+    M = 4
+    constellation_points = generate_constellation_points(M)
+    symbol_time = n_up / sr
+    n_symbols = n_data_symbols + 8 + 1  # 8 for rc, 1 for differential
+
+    signal = signal[:n_symbols * n_up]
+
+    t = np.linspace(0, n_symbols * symbol_time, n_symbols * n_up)
+    dem_carrier = np.exp(1j*2*np.pi*frequency*t)
+
+    demodulated = signal * dem_carrier
+
+    rrc = generate_rrc_filter(n_up, symbol_time)
+    rrc /= np.linalg.norm(rrc)
+    demodulated = np.convolve(demodulated, rrc[::-1])
+
+    sampled = demodulated[::n_up]
+    sampled = sampled[8:-8] #remove 2x rc length at sides
+
+    diff_dec = differential_decode_symbols(sampled)
+
+
+# EXTERNAL
+    plt.plot( np.real( demodulated ), np.imag( demodulated ), linewidth=2.0 )
+    plt.grid( True )
+    plt.xlabel( '$\mathrm{Re}\\{s(t)\\}$' )
+    plt.ylabel(' $\mathrm{Im}\\{s(t)\\}$' )
+    plt.title( 'Demodulated QPSK signal' )
+    plt.show()
+
+    plt.plot( np.real( diff_dec ), np.imag( diff_dec ), 'o', linewidth=2.0 )
+    for i, xy in enumerate(zip(np.real(diff_dec), np.imag(diff_dec))):
+        plt.annotate(str(i), xy=xy, textcoords='data')
+    plt.grid( True )
+    plt.xlabel( '$\mathrm{Re}\\{s(t)\\}$' )
+    plt.ylabel(' $\mathrm{Im}\\{s(t)\\}$' )
+    plt.title( 'Demodulated QPSK signal' )
+    plt.show()
+# END EXTERNAL
+
+    symbols = []
+    for s in diff_dec:
+        upper = np.imag(s) > 0
+        right = np.real(s) > 0
+        if upper and right:
+            symbols.append(0)
+        if upper and not right:
+            symbols.append(1)
+        if not upper and not right:
+            symbols.append(2)
+        if not upper and right:
+            symbols.append(3)
+
+    return symbols
+
 
 def generate_chirp(f0, f1, duration, sample_rate):
     ts = np.linspace(0, duration, duration * sample_rate)
@@ -117,6 +347,24 @@ def check_checksum(data):
 
     return checksum == data[3]
 
+def differential_encode_symbol_nums(symbol_nums, M):
+    encoded = [0]
+    last = 0
+    for s in symbol_nums:
+        enc = (s + last) % M
+        last = enc
+        encoded.append(enc)
+    return encoded
+
+
+def differential_decode_symbols(symbols):
+    last = symbols[0]
+    decoded = np.zeros(symbols.shape[0] - 1, dtype=np.complex128)
+    for i, s in enumerate(symbols[1:]):
+        decoded[i] = s / last * (1+1j)
+        last = s
+    return decoded
+
 
 def find_sync_signal(data, sr, sync_signal):
     """
@@ -130,3 +378,37 @@ def bandpass(data, f, pass_width, sr):
     filter_array = scipy_signal.firwin(128, [f-pass_width, f+pass_width], pass_zero=False, nyq=sr/2)
     data2 = scipy_signal.fftconvolve(data, filter_array, mode='same')
     return data2
+
+if __name__ == "__main__":
+    import scipy_wavfile as wavfile
+    import random
+
+    random.seed(1337)
+    data = [random.randint(0, 3) for _ in range(64)]
+
+    print([9] + data)
+
+    diff_data = differential_encode_symbol_nums(data, 4)
+    print(diff_data)
+
+    sync_signal = generate_chirp(2000, 4000, 0.3, 48000)
+
+    data_signal = generate_signal_new(diff_data, 256, 48000, 4000)
+    signal = np.append(sync_signal, data_signal)
+    wavfile.write("test_new.wav", 48000, (signal * np.iinfo(np.int16).max).astype(np.int16))
+
+    sr, signal = wavfile.read("test_new_rec_rcc_bad.wav")
+    assert sr == 48000
+    signal = (signal[:,0]).astype(np.float) / np.iinfo(np.int16).max
+    print("read length ", signal.shape)
+
+    end_of_sync = find_sync_signal(signal, 48000, sync_signal)
+    print("end of sync: ", end_of_sync)
+    demod_data = demodulate_signal(signal[end_of_sync:], 64, 256, 48000, 4000)
+    ser = sum([int(orig != demod) for orig, demod in zip(data, demod_data)])/len(data)
+
+    print(data)
+    print(len(data))
+    print(demod_data)
+    print(len(demod_data))
+    print("SER: {}".format(ser))
